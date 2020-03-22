@@ -1,4 +1,5 @@
 const uuidv4 = require('uuid/v4');
+const uuidv1 = require('uuid/v1');
 class PeerToPeer {
     constructor() {
         this.onQueue = [];
@@ -7,7 +8,6 @@ class PeerToPeer {
 
     onMessage(message, client) {
         const { type, data } = message;
-        console.log(type)
         switch (type) {
             case 'queue':
                 this.queue(client);
@@ -27,24 +27,31 @@ class PeerToPeer {
     }
 
     addCandidate(data) {
+        console.log('candidate data', data);
         const oppositeRole = this.getOppositeRole(data.role);
         this.p2pRooms[data.roomId][oppositeRole].send(JSON.stringify({
             type: 'add-candidate',
-            candidate: data.message
+            data: {
+                candidate: data.candidate
+            }
         }));
     }
 
     receiveOffer(data) {
         this.p2pRooms[data.roomId]['receiver'].send(JSON.stringify({
             type: 'offer',
-            offer: data.offer
+            data: {
+                offer: data.offer
+            }
         }));
     }
 
     receiveAnswer(data) {
         this.p2pRooms[data.roomId]['initiator'].send(JSON.stringify({
             type: 'answer',
-            answer: data.answer
+            data: {
+                answer: data.answer
+            }
         }));
     }
     
@@ -66,7 +73,9 @@ class PeerToPeer {
                     newRoom['initiator'] = client;
                     this.sendMessage(
                         client,
-                        Object.assign(payload, { role: 'initiator', roomId})
+                        Object.assign(payload, { data: {
+                            role: 'initiator', roomId, username: uuidv1()
+                        }})
                     );
                 }
 
@@ -74,7 +83,9 @@ class PeerToPeer {
                     newRoom['receiver'] = client;
                     this.sendMessage(
                         client,
-                        Object.assign(payload, { role: 'receiver', roomId })
+                        Object.assign(payload, { data: {
+                            role: 'receiver', roomId, username: uuidv1()
+                        }})
                     );
                 }
 
