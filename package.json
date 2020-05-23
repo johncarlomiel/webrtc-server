@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cron": "^1.8.2",
     "express": "^4.17.1",
     "uuid": "^3.4.0",
     "ws": "^7.2.1"
