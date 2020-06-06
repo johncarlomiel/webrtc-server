@@ -1,75 +1,19 @@
-const uuidv4 = require('uuid/v4');
-const uuidv1 = require('uuid/v1');
-const events = require('events');
-const queueChecker = new events.EventEmitter();
-
-const store = {
-  onQueue: [],
-  rooms: []
-}
-
-function sendMessage(client, payload) {
-  client.send(JSON.stringify(payload));
-}
-
-queueChecker.on('new client queuing', () => {
-  console.log('store.onQueue >> ', store.onQueue.length);
-  if (store.onQueue.length >= 2) {
-    let newRoom = {};
-    const roomId = uuidv4();
-
-    let payload = {
-      type: 'received-queue-info'
-    }
-
-    store.onQueue = store.onQueue.filter((client, clientIndex) => {
-      if (clientIndex === 0) {
-        const client1Username = uuidv1();
-        newRoom['initiator'] = {
-          client,
-          username: client1Username
-        };
-        sendMessage(
-          client,
-          Object.assign(payload, {
-            data: {
-              role: 'initiator', roomId, username: client1Username
-            }
-          })
-        );
-      }
-
-      if (clientIndex === 1) {
-        const client2Username = uuidv1();
-        newRoom['receiver'] = {
-          client,
-          username: client2Username
-        };
-        sendMessage(
-          client,
-          Object.assign(payload, {
-            data: {
-              role: 'receiver', roomId, username: client2Username
-            }
-          })
-        );
-      }
-
-      if (clientIndex >= 2) {
-        return client;
-      }
-    });
-    store.rooms[roomId] = newRoom;
-  }
-});
-
+const { sendMessage } = require('../utils/index');
+const { rooms } = require('../store');
+const queueChecker = require('../emitters/queue');
 class PeerToPeer {
 
-  onMessage(message, client) {
+  onMessage(message, client, userId) {
     const { type, data } = message;
     switch (type) {
       case 'queue':
-        this.queue(client);
+        queueChecker.emit('new-client-queuing', client, userId);
+        break;
+      case 'cancel-queue':
+        queueChecker.emit('cancel-queue', userId);
+        break;
+      case 'invitation-response':
+        queueChecker.emit('respond-to-invitation', data, userId);
         break;
       case 'add-candidate':
         this.addCandidate(data);
@@ -117,32 +61,6 @@ class PeerToPeer {
   //Roles: ['initiator', 'receiver']
   getOppositeRole(role) {
     return role === 'initiator' ? 'receiver' : 'initiator';
-  }
-
-  queue(client) {
-    store.onQueue.push(client);
-    queueChecker.emit('new client queuing');
-  }
-
-
-  matchAcceptOrReject(roomId, username, status) {
-    const clients = Object.values(store.rooms[roomId]);
-    if (status === 'accept') {
-      clients.forEach((client, clientIndex) => {
-        if(client.username === username) {
-          const role = Object.keys(store.rooms[roomId])[clientIndex];
-          store.rooms[roomId][role]['isAccepted'] = true;
-        }
-      });
-    } 
-
-    if(status === 'reject') {
-      clients.forEach(client => {
-        if(client.username !== username) {
-          sendMessage(client, { type: 'break-match' })
-        }
-      });
-    }
   }
 }
 
