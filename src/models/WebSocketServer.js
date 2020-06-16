@@ -16,8 +16,7 @@ class WebSocketServer {
             this.clients[id] = ws;
             ws.on('message', (request) => {
                 const parsedRequest = JSON.parse(request);
-                this.features[parsedRequest.feature].onMessage(parsedRequest, this.clients[id]);
-
+                this.features[parsedRequest.feature].onMessage(parsedRequest, this.clients[id], id);
             });
         });
     }
