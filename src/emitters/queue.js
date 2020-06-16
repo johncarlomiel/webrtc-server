@@ -9,7 +9,6 @@ const queueChecker = new events.EventEmitter();
 
 queueChecker.on('new-client-queuing', (client, userId) => {
   onQueue.push({ userId, client });
-  console.log('store.onQueue >> ', onQueue.length);
   if (onQueue.length >= 2) {
     const roomId = uuidv4();
     let newRoom = {
@@ -26,7 +25,7 @@ queueChecker.on('new-client-queuing', (client, userId) => {
       if (clientIndex !== 2) {
         const role = roles[clientIndex];
         newRoom[role] = {
-          client,
+          clientWs: client,
           userId,
           status: 'pending'
         }
@@ -42,7 +41,6 @@ queueChecker.on('new-client-queuing', (client, userId) => {
 
       return false;
     });
-    console.log(onQueue);
     rooms.push(newRoom);
   }
 });
@@ -50,7 +48,6 @@ queueChecker.on('new-client-queuing', (client, userId) => {
 
 queueChecker.on('cancel-queue', (userId) => {
   onQueue = onQueue.filter(({ userId: clientUserId }) => userId !== clientUserId)
-  console.log(onQueue);
 });
 
 queueChecker.on('respond-to-invitation', ({ roomId, response }, userId) => {
@@ -74,25 +71,26 @@ queueChecker.on('respond-to-invitation', ({ roomId, response }, userId) => {
             data: { roomId },
             type: 'match-ready'
           };
-          sendMessage(initiator.client, payload);
-          sendMessage(receiver.client, payload);
+          sendMessage(initiator.clientWs, payload);
+          sendMessage(receiver.clientWs, payload);
         }
       }
 
       return room;
     });
-    console.log(rooms);
   }
 
 
   if (response === 'reject') {
+    const test = rooms.find(({ roomId: storedRoomId }) => storedRoomId === roomId);
     const { initiator, receiver } = rooms.find(({ roomId: storedRoomId }) => storedRoomId === roomId);
     const clients = [initiator, receiver];
-    clients.forEach(client => {
-      if (client.userId !== userId) {
-        sendMessage(client, { type: 'break-match' })
+
+    clients.forEach(({ clientWs, userId:storedUserId }) => {
+      if (storedUserId !== userId) {
+        sendMessage(clientWs, { type: 'break-match' })
       }
-    });
+    }); 
     rooms = rooms.filter(({ roomId: storedRoomId }) => storedRoomId !== roomId);
   }
 
