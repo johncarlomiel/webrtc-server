@@ -2,7 +2,6 @@ const { sendMessage } = require('../utils/index');
 const { rooms } = require('../store');
 const queueChecker = require('../emitters/queue');
 class PeerToPeer {
-
   onMessage(message, client, userId) {
     const { type, data } = message;
     switch (type) {
@@ -15,53 +14,25 @@ class PeerToPeer {
       case 'invitation-response':
         queueChecker.emit('respond-to-invitation', data, userId);
         break;
+      case 'ready-handshake':
+        queueChecker.emit('ready-handshake', data, userId);
+        break;
       case 'add-candidate':
-        this.addCandidate(data);
+        queueChecker.emit('add-candidate', data, userId);
         break;
       case 'receive-offer':
-        this.receiveOffer(data);
+        queueChecker.emit('receive-offer', data, userId);
         break;
       case 'receive-answer':
-        this.receiveAnswer(data);
+        queueChecker.emit('receive-answer', data, userId);
         break;
       default:
         break;
     }
   }
 
-  addCandidate(data) {
-    console.log('candidate data', data);
-    const oppositeRole = this.getOppositeRole(data.role);
-    this.p2pRooms[data.roomId][oppositeRole].send(JSON.stringify({
-      type: 'add-candidate',
-      data: {
-        candidate: data.candidate
-      }
-    }));
-  }
-
-  receiveOffer(data) {
-    this.p2pRooms[data.roomId]['receiver'].send(JSON.stringify({
-      type: 'offer',
-      data: {
-        offer: data.offer
-      }
-    }));
-  }
-
-  receiveAnswer(data) {
-    this.p2pRooms[data.roomId]['initiator'].send(JSON.stringify({
-      type: 'answer',
-      data: {
-        answer: data.answer
-      }
-    }));
-  }
-
   //Roles: ['initiator', 'receiver']
-  getOppositeRole(role) {
-    return role === 'initiator' ? 'receiver' : 'initiator';
-  }
+  
 }
 
 
