@@ -1,5 +1,4 @@
 const { sendMessage } = require('../utils/index');
-const { rooms } = require('../store');
 const queueChecker = require('../emitters/queue');
 class PeerToPeer {
   onMessage(message, client, userId) {
@@ -31,10 +30,10 @@ class PeerToPeer {
     }
   }
 
-  //Roles: ['initiator', 'receiver']
+  onDisconnect(userId) {
+    queueChecker.emit('disconnect', userId);
+  }
   
 }
-
-
 
 module.exports = PeerToPeer;
